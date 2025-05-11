@@ -1,0 +1,32 @@
+{
+  "name": "repoguard",
+  "version": "0.1.0",
+  "description": "A command-line tool for monitoring and protecting Git repositories",
+  "main": "dist/index.js",
+  "bin": {
+    "repoguard": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "ts-node src/cli.ts"
+  },
+  "keywords": [
+    "git",
+    "security",
+    "cli",
+    "repository",
+    "monitoring"
+  ],
+  "author": "Black-thorne",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^9.4.1",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.9",
+    "typescript": "^4.9.3",
+    "ts-node": "^10.9.1"
+  }
+}
