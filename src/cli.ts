@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { SecurityScanner } from './scanner';
+import { ConfigManager } from './config';
 
 const program = new Command();
 
@@ -19,7 +20,7 @@ program
     console.log(chalk.blue('🔍 Scanning repository...'));
     console.log(chalk.gray(`Path: ${options.path}`));
 
-    const scanner = new SecurityScanner();
+    const scanner = new SecurityScanner(options.path);
     const results = await scanner.scanDirectory(options.path);
 
     if (results.length === 0) {
@@ -42,8 +43,24 @@ program
   .command('init')
   .description('initialize repoguard configuration')
   .action(() => {
-    console.log(chalk.green('🚀 Initializing RepoGuard configuration...'));
-    console.log(chalk.yellow('⚠️  Feature coming soon'));
+    console.log(chalk.blue('🚀 Initializing RepoGuard configuration...'));
+
+    const configManager = new ConfigManager();
+
+    if (configManager.configExists()) {
+      console.log(chalk.yellow('⚠️  Configuration file already exists'));
+      console.log(chalk.gray('   Use --force to overwrite existing configuration'));
+      return;
+    }
+
+    try {
+      configManager.createDefaultConfig();
+      console.log(chalk.green('✅ Created .repoguard.json configuration file'));
+      console.log(chalk.gray('   You can now customize the security patterns and settings'));
+    } catch (error) {
+      console.error(chalk.red('❌ Failed to create configuration file'));
+      console.error(error);
+    }
   });
 
 program.parse();

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { ConfigManager, RepoGuardConfig } from './config';
 
 export interface ScanResult {
   file: string;
@@ -10,35 +11,27 @@ export interface ScanResult {
 }
 
 export class SecurityScanner {
+  private config: RepoGuardConfig;
   private patterns: Array<{
     name: string;
     regex: RegExp;
     severity: 'high' | 'medium' | 'low';
   }> = [];
 
-  constructor() {
-    this.loadDefaultPatterns();
+  constructor(projectPath: string = '.') {
+    const configManager = new ConfigManager(projectPath);
+    this.config = configManager.loadConfig();
+    this.loadPatterns();
   }
 
-  private loadDefaultPatterns() {
-    // Basic patterns for common secrets
-    this.patterns = [
-      {
-        name: 'API Key',
-        regex: /api[_-]?key[_-]?[\w\d]*[\s]*[:=][\s]*['"']?([a-zA-Z0-9_\-]{20,})['"']?/gi,
-        severity: 'high'
-      },
-      {
-        name: 'Password',
-        regex: /password[\s]*[:=][\s]*['"']?([^\s'"]{6,})['"']?/gi,
-        severity: 'high'
-      },
-      {
-        name: 'JWT Token',
-        regex: /eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*/g,
-        severity: 'medium'
-      }
-    ];
+  private loadPatterns() {
+    this.patterns = this.config.patterns
+      .filter(p => p.enabled)
+      .map(p => ({
+        name: p.name,
+        regex: new RegExp(p.regex, 'gi'),
+        severity: p.severity
+      }));
   }
 
   async scanDirectory(dirPath: string): Promise<ScanResult[]> {
@@ -88,7 +81,6 @@ export class SecurityScanner {
 
   private async getFiles(dirPath: string): Promise<string[]> {
     const files: string[] = [];
-    const excludeDirs = ['node_modules', '.git', 'dist', 'coverage'];
 
     const traverse = (currentPath: string) => {
       const entries = fs.readdirSync(currentPath);
@@ -97,10 +89,23 @@ export class SecurityScanner {
         const fullPath = path.join(currentPath, entry);
         const stat = fs.statSync(fullPath);
 
-        if (stat.isDirectory() && !excludeDirs.includes(entry)) {
+        if (stat.isDirectory() && !this.config.excludeDirs.includes(entry)) {
           traverse(fullPath);
-        } else if (stat.isFile()) {
-          files.push(fullPath);
+        } else if (stat.isFile() && stat.size <= this.config.maxFileSize) {
+          // Check if file should be included based on patterns
+          const shouldInclude = this.config.includeFiles.some(pattern => {
+            const regex = new RegExp(pattern.replace('*', '.*'), 'i');
+            return regex.test(entry);
+          });
+
+          const shouldExclude = this.config.excludeFiles.some(pattern => {
+            const regex = new RegExp(pattern.replace('*', '.*'), 'i');
+            return regex.test(entry);
+          });
+
+          if (shouldInclude && !shouldExclude) {
+            files.push(fullPath);
+          }
         }
       }
     };
