@@ -12,27 +12,76 @@ export interface ScanReport {
     medium: number;
     low: number;
   };
+  statistics: {
+    totalFileSize: number;
+    averageFileSize: number;
+    largestFile: string;
+    largestFileSize: number;
+    scanDuration: number;
+  };
   results: ScanResult[];
 }
 
 export class Reporter {
   constructor(private projectPath: string) {}
 
-  generateReport(results: ScanResult[]): ScanReport {
+  generateReport(results: ScanResult[], scanStartTime?: Date): ScanReport {
+    const uniqueFiles = this.getUniqueFiles(results);
+    const fileStats = this.calculateFileStatistics(uniqueFiles);
+
     const report: ScanReport = {
       timestamp: new Date().toISOString(),
       projectPath: this.projectPath,
-      totalFiles: this.getUniqueFiles(results).length,
+      totalFiles: uniqueFiles.length,
       totalIssues: results.length,
       issuesBySeverity: {
         high: results.filter(r => r.severity === 'high').length,
         medium: results.filter(r => r.severity === 'medium').length,
         low: results.filter(r => r.severity === 'low').length
       },
+      statistics: {
+        totalFileSize: fileStats.totalSize,
+        averageFileSize: fileStats.averageSize,
+        largestFile: fileStats.largestFile,
+        largestFileSize: fileStats.largestSize,
+        scanDuration: scanStartTime ? Date.now() - scanStartTime.getTime() : 0
+      },
       results
     };
 
     return report;
+  }
+
+  private calculateFileStatistics(files: string[]): {
+    totalSize: number;
+    averageSize: number;
+    largestFile: string;
+    largestSize: number;
+  } {
+    let totalSize = 0;
+    let largestFile = '';
+    let largestSize = 0;
+
+    for (const file of files) {
+      try {
+        const stats = fs.statSync(file);
+        totalSize += stats.size;
+
+        if (stats.size > largestSize) {
+          largestSize = stats.size;
+          largestFile = file;
+        }
+      } catch (error) {
+        // Skip files that can't be accessed
+      }
+    }
+
+    return {
+      totalSize,
+      averageSize: files.length > 0 ? totalSize / files.length : 0,
+      largestFile: largestFile.replace(this.projectPath, '.'),
+      largestSize
+    };
   }
 
   async saveJsonReport(report: ScanReport, outputPath?: string): Promise<string> {
@@ -180,6 +229,20 @@ export class Reporter {
                 <div class="stat-value" style="color: ${severityColors.low}">${report.issuesBySeverity.low}</div>
                 <div>Low Risk</div>
             </div>
+            <div class="stat">
+                <div class="stat-value">${this.formatFileSize(report.statistics.totalFileSize)}</div>
+                <div>Total Size</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">${report.statistics.scanDuration}ms</div>
+                <div>Scan Duration</div>
+            </div>
+        </div>
+
+        <div class="file-stats">
+            <h3>📊 File Statistics</h3>
+            <p><strong>Average file size:</strong> ${this.formatFileSize(report.statistics.averageFileSize)}</p>
+            <p><strong>Largest file:</strong> ${report.statistics.largestFile} (${this.formatFileSize(report.statistics.largestFileSize)})</p>
         </div>
 
         <div class="results">
@@ -221,5 +284,15 @@ export class Reporter {
 
   private getUniqueFiles(results: ScanResult[]): string[] {
     return [...new Set(results.map(r => r.file))];
+  }
+
+  private formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }

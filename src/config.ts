@@ -12,6 +12,12 @@ export interface RepoGuardConfig {
   includeFiles: string[];
   excludeFiles: string[];
   maxFileSize: number;
+  whitelist: Array<{
+    file: string;
+    pattern: string;
+    match: string;
+    reason?: string;
+  }>;
 }
 
 export class ConfigManager {
@@ -52,7 +58,8 @@ export class ConfigManager {
     excludeDirs: ['node_modules', '.git', 'dist', 'coverage', '.next', 'build'],
     includeFiles: ['*.js', '*.ts', '*.json', '*.env', '*.config', '*.yaml', '*.yml'],
     excludeFiles: ['*.min.js', '*.bundle.js'],
-    maxFileSize: 1024 * 1024 // 1MB
+    maxFileSize: 1024 * 1024, // 1MB
+    whitelist: []
   };
 
   constructor(projectPath: string = '.') {

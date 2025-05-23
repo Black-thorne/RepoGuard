@@ -34,21 +34,61 @@ export class SecurityScanner {
       }));
   }
 
-  async scanDirectory(dirPath: string): Promise<ScanResult[]> {
+  async scanDirectory(dirPath: string, verbose: boolean = false, quiet: boolean = false): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
 
     try {
       const files = await this.getFiles(dirPath);
 
-      for (const file of files) {
+      if (verbose && !quiet) {
+        console.log(`📂 Found ${files.length} files to scan`);
+      }
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        if (verbose && !quiet) {
+          console.log(`🔍 Scanning: ${file.replace(dirPath, '.')}`);
+        }
+
         const fileResults = await this.scanFile(file);
         results.push(...fileResults);
+
+        if (verbose && !quiet && fileResults.length > 0) {
+          console.log(`  ⚠️  Found ${fileResults.length} issues in this file`);
+        }
+      }
+
+      if (verbose && !quiet) {
+        console.log(`✅ Scan complete. Processed ${files.length} files`);
       }
     } catch (error) {
-      console.error(`Error scanning directory: ${error}`);
+      if (!quiet) {
+        console.error(`Error scanning directory: ${error}`);
+      }
     }
 
-    return results;
+    // Filter out whitelisted items
+    const filteredResults = this.filterWhitelistedResults(results);
+
+    return filteredResults;
+  }
+
+  getPatternCount(): number {
+    return this.patterns.length;
+  }
+
+  private filterWhitelistedResults(results: ScanResult[]): ScanResult[] {
+    return results.filter(result => {
+      return !this.config.whitelist.some(whitelistItem => {
+        const fileMatches = result.file.endsWith(whitelistItem.file) ||
+                          result.file.includes(whitelistItem.file);
+        const patternMatches = result.pattern === whitelistItem.pattern;
+        const matchMatches = result.match.includes(whitelistItem.match);
+
+        return fileMatches && patternMatches && matchMatches;
+      });
+    });
   }
 
   private async scanFile(filePath: string): Promise<ScanResult[]> {
