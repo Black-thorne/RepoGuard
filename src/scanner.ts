@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigManager, RepoGuardConfig } from './config';
+import * as cliProgress from 'cli-progress';
 
 export interface ScanResult {
   file: string;
@@ -34,7 +35,7 @@ export class SecurityScanner {
       }));
   }
 
-  async scanDirectory(dirPath: string, verbose: boolean = false, quiet: boolean = false): Promise<ScanResult[]> {
+  async scanDirectory(dirPath: string, verbose: boolean = false, quiet: boolean = false, showProgress: boolean = true): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
 
     try {
@@ -42,6 +43,18 @@ export class SecurityScanner {
 
       if (verbose && !quiet) {
         console.log(`📂 Found ${files.length} files to scan`);
+      }
+
+      // Initialize progress bar for large scans
+      let progressBar: cliProgress.SingleBar | null = null;
+      if (showProgress && !verbose && !quiet && files.length > 10) {
+        progressBar = new cliProgress.SingleBar({
+          format: '🔍 Scanning |{bar}| {percentage}% | {value}/{total} files | ETA: {eta}s',
+          barCompleteChar: '\u2588',
+          barIncompleteChar: '\u2591',
+          hideCursor: true
+        });
+        progressBar.start(files.length, 0);
       }
 
       for (let i = 0; i < files.length; i++) {
@@ -57,6 +70,14 @@ export class SecurityScanner {
         if (verbose && !quiet && fileResults.length > 0) {
           console.log(`  ⚠️  Found ${fileResults.length} issues in this file`);
         }
+
+        if (progressBar) {
+          progressBar.update(i + 1);
+        }
+      }
+
+      if (progressBar) {
+        progressBar.stop();
       }
 
       if (verbose && !quiet) {

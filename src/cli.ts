@@ -22,6 +22,7 @@ program
   .option('--html <file>', 'save HTML report to file')
   .option('-v, --verbose', 'enable verbose output')
   .option('-q, --quiet', 'suppress all output except errors')
+  .option('--no-progress', 'disable progress bar')
   .action(async (options) => {
     if (!options.quiet) {
       console.log(chalk.blue('🔍 Scanning repository...'));
@@ -34,7 +35,7 @@ program
 
     const scanStartTime = new Date();
     const scanner = new SecurityScanner(options.path);
-    const results = await scanner.scanDirectory(options.path, options.verbose, options.quiet);
+    const results = await scanner.scanDirectory(options.path, options.verbose, options.quiet, options.progress !== false);
     const reporter = new Reporter(options.path);
     const report = reporter.generateReport(results, scanStartTime);
 
