@@ -6,9 +6,12 @@ A command-line tool for monitoring and protecting Git repositories from security
 
 - 🔍 **Repository Scanning**: Comprehensive scan for security issues in your codebase
 - 🚨 **Secret Detection**: Detect API keys, passwords, JWT tokens, private keys, and database URLs
-- 📊 **Rich Reporting**: Generate detailed reports in JSON and HTML formats
+- 📊 **Rich Reporting**: Generate detailed reports in JSON and HTML formats with file statistics
 - ⚙️ **Configurable Rules**: Customize security patterns and scanning behavior
 - 🎯 **Smart Filtering**: Include/exclude files and directories based on patterns
+- 📋 **Whitelist Support**: Manage false positives with built-in whitelist functionality
+- 📈 **Progress Tracking**: Visual progress bar for large repository scans
+- 🔇 **Multiple Output Modes**: Verbose, quiet, and normal output modes
 - 🌈 **Colorized Output**: Easy-to-read terminal output with severity indicators
 
 ## Installation
@@ -45,6 +48,9 @@ Options:
   -o, --output <file>   Save report to file (json or html based on extension)
   --json <file>         Save JSON report to file
   --html <file>         Save HTML report to file
+  -v, --verbose         Enable verbose output with detailed scan information
+  -q, --quiet           Suppress all output except errors
+  --no-progress         Disable progress bar for large scans
 ```
 
 ### `init` - Initialize configuration
@@ -53,6 +59,22 @@ Options:
 repoguard init
 
 Creates a .repoguard.json configuration file with default settings.
+```
+
+### `whitelist` - Manage false positives
+
+```bash
+repoguard whitelist [options]
+
+Options:
+  -l, --list                      List all whitelist items
+  -a, --add <file:pattern:match>  Add item to whitelist
+  -r, --remove <index>            Remove whitelist item by index
+
+Examples:
+  repoguard whitelist -l
+  repoguard whitelist -a "test.js:API Key:test_api_key"
+  repoguard whitelist -r 1
 ```
 
 ## Configuration
@@ -72,7 +94,8 @@ RepoGuard uses a `.repoguard.json` configuration file to customize scanning beha
   "excludeDirs": ["node_modules", ".git", "dist", "coverage"],
   "includeFiles": ["*.js", "*.ts", "*.json", "*.env"],
   "excludeFiles": ["*.min.js"],
-  "maxFileSize": 1048576
+  "maxFileSize": 1048576,
+  "whitelist": []
 }
 ```
 
